@@ -1,0 +1,2762 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>조리갈리</title>
+    <!-- 최신 버전의 PeerJS 사용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
+    <style>
+        /* 기본 스타일 및 리셋 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Jua', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #FFC3A0 0%, #FFAFBD 100%);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 게임 컨테이너 */
+        .game-container {
+            width: 95%;
+            max-width: 1200px;
+            height: 95vh;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+
+        /* 헤더 */
+        .game-header {
+            background: linear-gradient(90deg, #FF6B6B 0%, #FF8E53 100%);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin: 0;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 게임 화면 */
+        .game-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        /* 접속 화면 */
+        .connection-screen {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .connection-screen h2 {
+            font-size: 1.8rem;
+            color: #FF6B6B;
+            margin-bottom: 5px;
+        }
+
+        .connection-screen p {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .connection-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .connection-screen button, .ready-btn {
+            background: linear-gradient(90deg, #FF8E53 0%, #FF6B6B 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 12px 25px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            white-space: nowrap;
+        }
+
+        .connection-screen button:hover, .ready-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .connection-screen button:active, .ready-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 3px 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .connection-screen input, .chat-input {
+            border: 2px solid #FFB6C1;
+            border-radius: 30px;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .connection-screen input:focus, .chat-input:focus {
+            border-color: #FF6B6B;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.2);
+        }
+
+        .join-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 대기 화면 */
+        .waiting-screen {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            text-align: center;
+            display: none;
+            opacity: 0;
+        }
+
+        .waiting-screen h2 {
+            font-size: 2.2rem;
+            color: #FF6B6B;
+            margin-bottom: 10px;
+        }
+
+        .ready-status {
+            font-size: 1.5rem;
+            margin: 15px 0;
+            background-color: rgba(255, 250, 240, 0.8);
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .ready-status p {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .ready-status span.yes {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .ready-status span.no {
+            color: #e74c3c;
+        }
+
+        /* 게임 플레이 영역 */
+        .gameplay-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            padding: 15px 0;
+            display: none;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .player-area {
+            height: 40%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.5s ease;
+            padding: 10px 5px;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 8px 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            margin: 5px 0;
+        }
+
+        .turn-indicator {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 1rem;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+        }
+
+        .turn-indicator.active {
+            opacity: 1;
+        }
+
+        .opponent-area {
+            border-bottom: 2px dashed rgba(255, 107, 107, 0.3);
+        }
+
+        .player-self-area {
+            border-top: 2px dashed rgba(255, 107, 107, 0.3);
+        }
+
+        .card-area {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            position: relative;
+            height: 180px;
+        }
+
+        .player-active-card, .opponent-active-card {
+            position: absolute;
+            width: 130px;
+            height: 180px;
+            perspective: 1000px;
+            z-index: 10;
+        }
+
+        .player-active-card {
+            top: -20px;
+        }
+
+        .opponent-active-card {
+            bottom: -20px;
+        }
+
+        /* 중앙 영역 */
+        .center-area {
+            height: 20%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 카드 스타일 */
+        .card {
+            width: 130px;
+            height: 180px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            border: 3px solid #FFE5E5;
+            transform: scale(0.9); /* 카드 크기 약간 줄임 */
+        }
+
+        .card-back {
+            background: linear-gradient(45deg, #FF6B6B 0%, #FFB88C 100%);
+            color: white;
+            font-size: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            transform: rotateY(180deg);
+        }
+
+        .card-front {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            background-color: #FFFAF0;
+        }
+
+        .card-content {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding: 5px;
+            overflow: hidden; /* 이모지가 카드 밖으로 나가지 않도록 */
+        }
+
+        .fruit-item {
+            font-size: 1.5rem; /* 이모지 크기 줄임 */
+            margin: 2px;
+            filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .card:hover .fruit-item {
+            transform: scale(1.05);
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            transform: translateY(-5px) scale(0.9);
+        }
+
+        /* 종 스타일 */
+        .bell {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 -5px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 50;
+            border: 5px solid rgba(255, 255, 255, 0.7);
+        }
+
+        .bell::before {
+            content: '🔔';
+            font-size: 3.5rem;
+            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.2));
+        }
+
+        .bell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), inset 0 -5px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .bell:active, .bell.ringing {
+            transform: scale(0.95);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2), inset 0 -3px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .bell.ringing {
+            animation: ring 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        @keyframes ring {
+            0%, 100% { transform: scale(0.95); }
+            10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg) scale(0.95); }
+            20%, 40%, 60%, 80% { transform: rotate(10deg) scale(1); }
+        }
+
+        /* 카드 덱 스타일 */
+        .deck {
+            position: relative;
+            width: 130px;
+            height: 180px;
+            margin: 20px;
+            perspective: 1000px;
+        }
+
+        .deck-stack {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .deck-card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #FF6B6B 0%, #FFB88C 100%);
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 3px solid white;
+        }
+
+        .deck-card:nth-child(1) { transform: translateZ(-2px) translateX(2px) translateY(2px); }
+        .deck-card:nth-child(2) { transform: translateZ(-4px) translateX(4px) translateY(4px); }
+        .deck-card:nth-child(3) { transform: translateZ(-6px) translateX(6px) translateY(6px); }
+
+        .deck-count {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            background-color: #FF6B6B;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            z-index: 20;
+            border: 3px solid white;
+        }
+
+        /* 메시지 시스템 */
+        .message-container {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        .game-message {
+            background-color: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 1.3rem;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 카운트다운 */
+        .countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10rem;
+            font-weight: bold;
+            color: #FF6B6B;
+            opacity: 0;
+            z-index: 100;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+        }
+
+        .countdown.show {
+            animation: countdownAnim 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes countdownAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        }
+
+        /* 채팅 시스템 */
+        .chat-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 320px;
+            height: 450px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 200;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateX(350px);
+            border: 2px solid #FFE5E5;
+        }
+
+        .chat-container.open {
+            transform: translateX(0);
+        }
+
+        .chat-header {
+            background: linear-gradient(90deg, #FF8E53 0%, #FF6B6B 100%);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background-color: #FFF5F5;
+        }
+
+        .chat-message {
+            padding: 10px 15px;
+            border-radius: 20px;
+            max-width: 80%;
+            word-break: break-word;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-message.sent {
+            background-color: #FF8E53;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .chat-message.received {
+            background-color: white;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .chat-input-container {
+            display: flex;
+            padding: 15px;
+            background-color: white;
+            border-top: 1px solid #FFE5E5;
+        }
+
+        .chat-input {
+            flex: 1;
+            margin-right: 10px;
+            padding: 12px 15px;
+            border-radius: 25px;
+            border: 2px solid #FFE5E5;
+            background-color: #FFF5F5;
+            font-size: 1rem;
+        }
+
+        .send-btn {
+            background: linear-gradient(90deg, #FF8E53 0%, #FF6B6B 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(255, 107, 107, 0.3);
+            font-size: 1.2rem;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        /* 여기서 버튼 겹침 문제를 해결 */
+        .chat-toggle {
+            position: fixed; 
+            bottom: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(90deg, #FF8E53 0%, #FF6B6B 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 201;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 3px solid white;
+        }
+
+        .chat-toggle:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 채팅창이 열려있을 때는 채팅 토글 버튼을 위로 이동 */
+        .chat-container.open + .chat-toggle {
+            bottom: 480px; 
+            right: 25px;
+            transform: scale(0.8); 
+        }
+
+        /* 조작법 */
+        .controls {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            border: 2px solid #FFE5E5;
+            animation: float 5s infinite ease-in-out;
+            z-index: 150; 
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .controls h3 {
+            margin-bottom: 15px;
+            color: #FF6B6B;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .controls h3::before {
+            content: "🎮";
+            font-size: 1.5rem;
+        }
+
+        .controls ul {
+            list-style-type: none;
+            padding-left: 5px;
+        }
+
+        .controls li {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .controls .key {
+            background-color: #FFF5F5;
+            border: 2px solid #FFE5E5;
+            border-radius: 8px;
+            padding: 5px 10px;
+            margin-right: 15px;
+            font-weight: bold;
+            display: inline-block;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+            color: #FF6B6B;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .controls p {
+            margin-top: 15px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding: 10px;
+            background-color: #FFF5F5;
+            border-radius: 10px;
+            border-left: 3px solid #FF6B6B;
+        }
+
+        /* 스크린 전환 애니메이션 */
+        .connection-screen, .waiting-screen, .gameplay-screen {
+            opacity: 0;
+            display: none;
+            transition: opacity 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .screen-active {
+            opacity: 1;
+            display: flex;
+        }
+
+        /* 로컬 게임 플레이어 구분 영역 */
+        .player-area.player1 {
+            border-bottom: 2px dashed rgba(255, 107, 107, 0.3);
+            border-left: 5px solid #27ae60; /* 플레이어 1 구분 색상 */
+        }
+
+        .player-area.player2 {
+            border-top: 2px dashed rgba(255, 107, 107, 0.3);
+            border-left: 5px solid #3498db; /* 플레이어 2 구분 색상 */
+        }
+
+        /* 로컬 게임 플레이어 정보 */
+        .player-area.player1 .player-info span:first-child {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .player-area.player2 .player-info span:first-child {
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .game-container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            .player-area {
+                height: 38%;
+            }
+
+            .center-area {
+                height: 24%;
+            }
+
+            .bell {
+                width: 80px;
+                height: 80px;
+            }
+
+            .bell::before {
+                font-size: 2.8rem;
+            }
+
+            .chat-container {
+                width: 100%;
+                height: 60vh;
+                bottom: 0;
+                right: 0;
+                border-radius: 20px 20px 0 0;
+                transform: translateY(100%);
+            }
+
+            .chat-container.open {
+                transform: translateY(0);
+            }
+
+            .chat-toggle {
+                bottom: 20px;
+                right: 20px;
+            }
+
+            .chat-container.open + .chat-toggle {
+                bottom: 62vh;
+                right: 20px;
+            }
+
+            .controls {
+                bottom: 20px;
+                left: 20px;
+                max-width: calc(100% - 100px);
+            }
+        }
+
+        /* 로딩 애니메이션 */
+        .loader {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            z-index: 1000;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        .loader-circle {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 10px solid transparent;
+            border-top-color: #FF6B6B;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loader-inner {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border: 10px solid transparent;
+            border-top-color: #FF8E53;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite reverse;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 오류 메시지 스타일 */
+        .error-message {
+            background-color: rgba(231, 76, 60, 0.85); 
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        /* 버튼 스타일 */
+        .local-play-btn, .local-multi-btn {
+            margin-top: 20px;
+        }
+        
+        .local-play-btn {
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+        }
+        
+        .local-multi-btn {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+        }
+        
+        /* 게임 설명 */
+        .game-description {
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #FFF5F5;
+            border-radius: 15px;
+            border-left: 4px solid #FF6B6B;
+            max-width: 600px;
+            text-align: left;
+            font-size: 1rem;
+            line-height: 1.4;
+            color: #555;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 게임 코드 표시 */
+        #peer-id-container {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #FFF5F5;
+            border-radius: 15px;
+            border: 2px dashed #FF6B6B;
+            max-width: 400px;
+            text-align: center;
+            animation: pulse 2s infinite ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+        }
+        
+        #peer-id {
+            font-size: 3rem;
+            color: #FF6B6B;
+            margin: 5px 0;
+            display: block;
+            letter-spacing: 5px;
+        }
+        
+        /* 연결 상태 메시지 */
+        #connection-status {
+            margin-top: 15px;
+            padding: 10px 15px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            font-weight: bold;
+            color: #FF6B6B;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>🍓 조리갈리 🍌</h1>
+        </div>
+
+        <div class="game-screen">
+            <!-- 메시지 시스템 -->
+            <div class="message-container">
+                <div class="game-message"></div>
+            </div>
+
+            <!-- 카운트다운 -->
+            <div class="countdown"></div>
+
+            <!-- 로딩 애니메이션 -->
+            <div class="loader" id="loader">
+                <div class="loader-circle"></div>
+                <div class="loader-inner"></div>
+            </div>
+
+            <!-- 접속 화면 -->
+            <div class="connection-screen screen-active">
+                <h2>🎮 조리갈리에 오신 것을 환영합니다! 🎮</h2>
+                <p class="game-description">
+                    <strong>🎲 게임 방법:</strong> 같은 과일이 <strong>정확히 5개</strong> 있을 때 종을 치세요!<br>
+                    각 플레이어는 턴마다 카드를 내고, 두 장의 카드에 있는 같은 종류의 과일이 총 5개가 되면 종을 쳐서 카드를 모두 가져갑니다.<br>
+                    잘못 종을 치면 상대방에게 카드 2장을 줘야 합니다. 모든 카드를 가진 플레이어가 승리합니다!
+                </p>
+                <div class="connection-options">
+                    <button id="create-btn">🌐 온라인: 새 게임 만들기</button>
+                    <div class="join-container">
+                        <input type="text" id="join-id" placeholder="3자리 게임 코드 입력" maxlength="3" pattern="[0-9]*" inputmode="numeric">
+                        <button id="join-btn">🌐 온라인: 게임 참여하기</button>
+                    </div>
+                    <button id="local-multi-btn" class="local-multi-btn">👥 로컬: 2인 플레이</button>
+                    <button id="local-play-btn" class="local-play-btn">🖥️ 로컬: 컴퓨터와 플레이</button>
+                </div>
+                <div id="peer-id-container" style="margin-top: 20px; display: none;">
+                    <p>당신의 게임 코드: <span id="peer-id" style="font-weight: bold; font-size: 2.5rem; color: #FF6B6B;"></span></p>
+                    <p>이 3자리 코드를 친구에게 공유하세요! 📱</p>
+                </div>
+                <div id="connection-status" style="margin-top: 20px; color: #FF6B6B; font-weight: bold;"></div>
+            </div>
+
+            <!-- 대기 화면 -->
+            <div class="waiting-screen">
+                <h2>🎲 게임 준비 🎲</h2>
+                <div class="ready-status">
+                    <p>나: <span id="my-ready" class="no">준비 안됨 ❌</span></p>
+                    <p>상대방: <span id="opponent-ready" class="no">준비 안됨 ❌</span></p>
+                </div>
+                <button class="ready-btn" id="ready-btn">✅ 준비 완료</button>
+                <button class="ready-btn" id="back-btn" style="background: linear-gradient(90deg, #888, #555); margin-top: 15px;">🔙 메인 화면으로</button>
+            </div>
+
+            <!-- 게임 플레이 화면 -->
+            <div class="gameplay-screen">
+                <!-- 상대방/플레이어1 영역 -->
+                <div class="player-area opponent-area player1">
+                    <div class="turn-indicator opponent-turn">👉 상대방 차례입니다!</div>
+                    <div class="player-info">
+                        <span id="player1-name">🧑‍🤝‍🧑 상대방</span>
+                        <span>남은 카드: <span id="opponent-cards">25</span>장 🃏</span>
+                    </div>
+                    <div class="card-area">
+                        <div class="deck">
+                            <div class="deck-stack">
+                                <div class="deck-card"></div>
+                                <div class="deck-card"></div>
+                                <div class="deck-card"></div>
+                            </div>
+                            <div class="deck-count" id="opponent-deck-count">25</div>
+                        </div>
+                        <div class="opponent-active-card">
+                            <!-- 상대방/플레이어1의 활성 카드가 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 중앙 영역 (종) -->
+                <div class="center-area">
+                    <div class="bell" id="bell"></div>
+                </div>
+
+                <!-- 플레이어/플레이어2 영역 -->
+                <div class="player-area player-self-area player2">
+                    <div class="turn-indicator player-turn">👉 당신의 차례입니다!</div>
+                    <div class="card-area">
+                        <div class="player-active-card">
+                            <!-- 플레이어/플레이어2의 활성 카드가 여기에 표시됩니다 -->
+                        </div>
+                        <div class="deck">
+                            <div class="deck-stack">
+                                <div class="deck-card"></div>
+                                <div class="deck-card"></div>
+                                <div class="deck-card"></div>
+                            </div>
+                            <div class="deck-count" id="player-deck-count">25</div>
+                        </div>
+                    </div>
+                    <div class="player-info">
+                        <span id="player2-name">👤 나</span>
+                        <span>남은 카드: <span id="player-cards">25</span>장 🃏</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 조작법 가이드 -->
+        <div class="controls">
+            <h3>조작법</h3>
+            <ul id="controls-list">
+                <li><span class="key">↑</span> 카드 내기</li>
+                <li><span class="key">Space</span> 종 치기</li>
+            </ul>
+            <p id="controls-desc">
+                🔔 같은 과일이 정확히 5개 있을 때 종을 쳐야 합니다!<br>
+                ⚠️ 잘못 종을 치면 상대방에게 카드 2장을 줘야 합니다.
+            </p>
+        </div>
+
+        <!-- 채팅 컨테이너 -->
+        <div class="chat-container">
+            <div class="chat-header">💬 채팅</div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="chat-input" placeholder="메시지 입력...">
+                <button class="send-btn" id="send-chat">📨</button>
+            </div>
+        </div>
+        
+        <!-- 채팅 토글 버튼 -->
+        <button class="chat-toggle" id="chat-toggle">💬</button>
+    </div>
+
+    <script>
+        // 전역 변수 설정
+        let peer; // PeerJS 객체
+        let conn; // 피어 연결
+        let playerId; // 플레이어 ID
+        let gameCode; // 게임 코드
+        let isHost = false; // 호스트 여부
+        let playerReady = false; // 플레이어 준비 상태
+        let opponentReady = false; // 상대방 준비 상태
+        let gameStarted = false; // 게임 시작 여부
+        let isMyTurn = false; // 현재 차례
+        let playerDeck = []; // 플레이어 덱
+        let opponentDeck = []; // 상대방 덱
+        let playerActiveCard = null; // 플레이어 활성 카드
+        let opponentActiveCard = null; // 상대방 활성 카드
+        let ringTimeout = null; // 종 애니메이션 타임아웃
+        let connectedToPeer = false; // 피어 연결 상태
+        let gameMode = 'online'; // 게임 모드 (online, ai, localMulti)
+        let countdownInterval = null; // 카운트다운 인터벌
+        let aiTurnTimeout = null; // AI 턴 타이머
+        let currentPlayer = 1; // 로컬 멀티플레이어용 현재 플레이어 (1 또는 2)
+        
+        // PeerJS 설정
+        const peerConfig = {
+            debug: 0 // 디버그 메시지 안보이게 설정
+        };
+
+        // 과일 이모지 배열
+        const fruits = ['🍎', '🍌', '🍇', '🍓', '🍍', '🍊', '🍑', '🍈', '🍉', '🥝'];
+
+        // DOM 요소 가져오기
+        const connectionScreen = document.querySelector('.connection-screen');
+        const waitingScreen = document.querySelector('.waiting-screen');
+        const gameplayScreen = document.querySelector('.gameplay-screen');
+        const createBtn = document.getElementById('create-btn');
+        const joinBtn = document.getElementById('join-btn');
+        const joinId = document.getElementById('join-id');
+        const peerIdContainer = document.getElementById('peer-id-container');
+        const peerIdDisplay = document.getElementById('peer-id');
+        const connectionStatus = document.getElementById('connection-status');
+        const readyBtn = document.getElementById('ready-btn');
+        const backBtn = document.getElementById('back-btn');
+        const myReadyStatus = document.getElementById('my-ready');
+        const opponentReadyStatus = document.getElementById('opponent-ready');
+        const playerCardsCount = document.getElementById('player-cards');
+        const opponentCardsCount = document.getElementById('opponent-cards');
+        const playerDeckCount = document.getElementById('player-deck-count');
+        const opponentDeckCount = document.getElementById('opponent-deck-count');
+        const playerActiveCardContainer = document.querySelector('.player-active-card');
+        const opponentActiveCardContainer = document.querySelector('.opponent-active-card');
+        const player1Name = document.getElementById('player1-name');
+        const player2Name = document.getElementById('player2-name');
+        const bell = document.getElementById('bell');
+        const countdown = document.querySelector('.countdown');
+        const gameMessage = document.querySelector('.game-message');
+        const playerTurnIndicator = document.querySelector('.player-turn');
+        const opponentTurnIndicator = document.querySelector('.opponent-turn');
+        const chatToggle = document.getElementById('chat-toggle');
+        const chatContainer = document.querySelector('.chat-container');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendChatBtn = document.getElementById('send-chat');
+        const loader = document.getElementById('loader');
+        const localPlayBtn = document.getElementById('local-play-btn');
+        const localMultiBtn = document.getElementById('local-multi-btn');
+        const controlsList = document.getElementById('controls-list');
+        const controlsDesc = document.getElementById('controls-desc');
+
+        // 오류 처리와 로그 개선
+        function logError(message, error) {
+            console.error(message, error);
+            
+            // 심각한 오류 시 사용자에게 알림
+            if (message.includes('연결') || message.includes('오류')) {
+                showErrorMessage(message);
+            }
+        }
+        
+        // 오류 메시지 표시 함수
+        function showErrorMessage(message) {
+            // 기존 오류 메시지 제거
+            const existingError = connectionStatus.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            
+            connectionStatus.appendChild(errorDiv);
+        }
+
+        // 3자리 게임 코드 생성 함수
+        function generateGameCode() {
+            // 100부터 999까지의 랜덤 숫자 (3자리)
+            return Math.floor(Math.random() * 900 + 100).toString();
+        }
+
+        // 로컬 AI 게임 시작 함수
+        function startAIGame() {
+            gameMode = 'ai';
+            isHost = true; // 플레이어가 항상 호스트
+            
+            // 대기 화면으로 전환
+            showScreen(waitingScreen);
+            
+            // 대기 화면 텍스트 변경
+            document.querySelector('.waiting-screen h2').textContent = '🤖 AI 모드 🤖';
+            document.querySelector('.ready-status p:nth-child(2)').innerHTML = 
+                '컴퓨터: <span id="opponent-ready" class="yes">준비 완료 ✅</span>';
+            
+            // 상대방(컴퓨터)은 이미 준비 완료
+            opponentReady = true;
+            opponentReadyStatus = document.getElementById('opponent-ready');
+            opponentReadyStatus.textContent = '준비 완료 ✅';
+            opponentReadyStatus.className = 'yes';
+            
+            // 조작법 업데이트
+            updateControlsForGameMode();
+        }
+        
+        // 로컬 멀티플레이어 게임 시작 함수
+        function startLocalMultiGame() {
+            gameMode = 'localMulti';
+            isHost = true; // 의미 없음
+            
+            // 대기 화면으로 전환
+            showScreen(waitingScreen);
+            
+            // 대기 화면 텍스트 변경
+            document.querySelector('.waiting-screen h2').textContent = '👥 로컬 2인 플레이 👥';
+            document.querySelector('.ready-status p:nth-child(1)').innerHTML = 
+                '플레이어 1: <span id="my-ready" class="no">준비 안됨 ❌</span>';
+            document.querySelector('.ready-status p:nth-child(2)').innerHTML = 
+                '플레이어 2: <span id="opponent-ready" class="no">준비 안됨 ❌</span>';
+            
+            // 준비 상태 초기화
+            playerReady = false;
+            opponentReady = false;
+            myReadyStatus = document.getElementById('my-ready');
+            opponentReadyStatus = document.getElementById('opponent-ready');
+            
+            // 준비 버튼 텍스트 변경
+            readyBtn.textContent = '✅ 모두 준비 완료';
+            
+            // 플레이어 이름 변경
+            player1Name.textContent = '🟢 플레이어 1';
+            player2Name.textContent = '🔵 플레이어 2';
+            
+            // 조작법 업데이트
+            updateControlsForGameMode();
+        }
+        
+        // 게임 모드에 따른 조작법 업데이트
+        function updateControlsForGameMode() {
+            controlsList.innerHTML = '';
+            
+            if (gameMode === 'localMulti') {
+                // 로컬 멀티플레이어 조작법
+                controlsList.innerHTML = `
+                    <li><span class="key">W</span> 플레이어 1: 카드 내기</li>
+                    <li><span class="key">Space</span> 플레이어 1: 종 치기</li>
+                    <li><span class="key">↑</span> 플레이어 2: 카드 내기</li>
+                    <li><span class="key">Enter</span> 플레이어 2: 종 치기</li>
+                `;
+                controlsDesc.innerHTML = `
+                    <strong>🟢 플레이어 1:</strong> W키로 카드 내기, 스페이스바로 종 치기<br>
+                    <strong>🔵 플레이어 2:</strong> 위쪽 화살표로 카드 내기, 엔터키로 종 치기<br>
+                    🔔 같은 과일이 정확히 5개 있을 때 종을 쳐야 합니다!
+                `;
+            } else if (gameMode === 'ai') {
+                // AI 게임 조작법
+                controlsList.innerHTML = `
+                    <li><span class="key">↑</span> 카드 내기</li>
+                    <li><span class="key">Space</span> 종 치기</li>
+                `;
+                controlsDesc.innerHTML = `
+                    🔔 같은 과일이 정확히 5개 있을 때 종을 쳐야 합니다!<br>
+                    ⚠️ 잘못 종을 치면 상대방에게 카드 2장을 줘야 합니다.
+                `;
+            } else {
+                // 온라인 게임 조작법
+                controlsList.innerHTML = `
+                    <li><span class="key">↑</span> 카드 내기</li>
+                    <li><span class="key">Space</span> 종 치기</li>
+                `;
+                controlsDesc.innerHTML = `
+                    🔔 같은 과일이 정확히 5개 있을 때 종을 쳐야 합니다!<br>
+                    ⚠️ 잘못 종을 치면 상대방에게 카드 2장을 줘야 합니다.
+                `;
+            }
+        }
+
+        // 게임 초기화 함수
+        function initGame() {
+            // 카드 덱 생성
+            createDecks();
+            
+            // 카드 수 업데이트
+            updateCardCounts();
+            
+            // 턴 표시기 업데이트
+            updateTurnIndicator();
+            
+            // 게임 화면으로 전환
+            showScreen(gameplayScreen);
+        }
+
+        // 카드 덱 생성 함수
+        function createDecks() {
+            console.log("덱 생성 시작");
+            // 초기 카드 생성 (총 50장)
+            const allCards = [];
+            
+            // 각 과일 타입별로 카드 생성
+            // 5가지 과일, 각 1~5개씩, 각 2장씩 = 총 50장
+            const usedFruits = fruits.slice(0, 5); // 처음 5개의 과일만 사용
+            
+            usedFruits.forEach(fruit => {
+                for (let count = 1; count <= 5; count++) {
+                    // 각 숫자당 2장씩 (1개짜리 카드 2장, 2개짜리 카드 2장, ...)
+                    allCards.push({ fruit, count });
+                    allCards.push({ fruit, count });
+                }
+            });
+            
+            console.log(`생성된 전체 카드: ${allCards.length}장`);
+            
+            // 카드 섞기
+            shuffleArray(allCards);
+            
+            // 카드 분배
+            if (gameMode === 'ai' || gameMode === 'localMulti') {
+                // 로컬 게임에서는 직접 분배
+                playerDeck = allCards.slice(0, 25);
+                opponentDeck = allCards.slice(25, 50);
+                console.log(`로컬 게임 카드 분배: 플레이어 ${playerDeck.length}장, 상대방 ${opponentDeck.length}장`);
+            } else if (isHost) {
+                // 온라인 플레이에서 호스트가 분배
+                playerDeck = allCards.slice(0, 25);
+                opponentDeck = allCards.slice(25, 50);
+                console.log(`온라인 게임(호스트) 카드 분배: 플레이어 ${playerDeck.length}장, 상대방 ${opponentDeck.length}장`);
+                
+                // 상대방에게 덱 정보 전송
+                if (conn && conn.open) {
+                    sendGameData('init-decks', {
+                        playerDeck: opponentDeck,
+                        opponentDeck: playerDeck
+                    });
+                }
+            }
+            
+            // 덱 정보 콘솔에 출력
+            console.log("플레이어 덱 첫 5장:", playerDeck.slice(0, 5));
+            console.log("상대방 덱 첫 5장:", opponentDeck.slice(0, 5));
+        }
+
+        // 배열 섞기 함수 (Fisher-Yates 알고리즘)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 카드 수 업데이트 함수
+        function updateCardCounts() {
+            playerCardsCount.textContent = playerDeck.length;
+            opponentCardsCount.textContent = opponentDeck.length;
+            playerDeckCount.textContent = playerDeck.length;
+            opponentDeckCount.textContent = opponentDeck.length;
+            
+            // 덱이 비었는지 확인
+            if (playerDeck.length === 0) {
+                gameOver(false); // 패배
+            } else if (opponentDeck.length === 0) {
+                gameOver(true); // 승리
+            } else if (playerDeck.length >= 50) {
+                // 모든 카드를 획득한 경우
+                gameOver(true);
+            } else if (opponentDeck.length >= 50) {
+                // 상대방이 모든 카드를 획득한 경우
+                gameOver(false);
+            }
+        }
+
+        // 턴 표시기 업데이트 함수
+        function updateTurnIndicator() {
+            if (gameMode === 'localMulti') {
+                // 로컬 멀티플레이어에서는 현재 플레이어 표시
+                playerTurnIndicator.textContent = 
+                    currentPlayer === 2 ? '👉 플레이어 2 차례입니다!' : '기다려주세요...';
+                opponentTurnIndicator.textContent = 
+                    currentPlayer === 1 ? '👉 플레이어 1 차례입니다!' : '기다려주세요...';
+                
+                playerTurnIndicator.classList.toggle('active', currentPlayer === 2);
+                opponentTurnIndicator.classList.toggle('active', currentPlayer === 1);
+            } else {
+                // 온라인 또는 AI 게임에서는 내 턴 표시
+                playerTurnIndicator.classList.toggle('active', isMyTurn);
+                opponentTurnIndicator.classList.toggle('active', !isMyTurn);
+            }
+        }
+
+        // 화면 전환 함수
+        function showScreen(screen) {
+            connectionScreen.classList.remove('screen-active');
+            waitingScreen.classList.remove('screen-active');
+            gameplayScreen.classList.remove('screen-active');
+            
+            screen.classList.add('screen-active');
+        }
+
+        // 로딩 표시/숨김 함수
+        function toggleLoader(show) {
+            if (show) {
+                loader.classList.add('active');
+            } else {
+                loader.classList.remove('active');
+            }
+        }
+
+        // 메시지 표시 함수
+        function showMessage(msg, duration = 3000) {
+            gameMessage.textContent = msg;
+            gameMessage.classList.add('show');
+            
+            setTimeout(() => {
+                gameMessage.classList.remove('show');
+            }, duration);
+        }
+
+        // 카운트다운 표시 함수
+        function showCountdown(count) {
+            countdown.textContent = count;
+            countdown.classList.add('show');
+            
+            setTimeout(() => {
+                countdown.classList.remove('show');
+            }, 900);
+        }
+
+        // 카운트다운 시작 함수
+        function startCountdown() {
+            let count = 3;
+            
+            // 이전 카운트다운이 있다면 정리
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            countdownInterval = setInterval(() => {
+                showCountdown(count);
+                
+                if (gameMode === 'online' && conn && conn.open) {
+                    sendGameData('countdown', { count });
+                }
+                
+                if (count === 0) {
+                    clearInterval(countdownInterval);
+                    startGame();
+                }
+                
+                count--;
+            }, 1000);
+        }
+
+        // 게임 시작 함수
+        function startGame() {
+            console.log("게임 시작");
+            
+            // 게임 시작 전에 카드 덱 확인
+            if (playerDeck.length === 0 || opponentDeck.length === 0) {
+                console.log("덱이 비어있어 다시 생성합니다.");
+                // 덱이 비어있으면 다시 생성
+                createDecks();
+            }
+            
+            console.log(`게임 시작 시 카드 수: 플레이어 ${playerDeck.length}장, 상대방 ${opponentDeck.length}장`);
+            
+            gameStarted = true;
+            
+            if (gameMode === 'localMulti') {
+                // 로컬 멀티플레이어는 플레이어 1 선공
+                currentPlayer = 1;
+            } else {
+                // 온라인/AI 게임은 호스트 선공
+                isMyTurn = isHost;
+            }
+            
+            // 턴 표시기 업데이트
+            updateTurnIndicator();
+            
+            // 게임 시작 메시지
+            showMessage('🎮 게임 시작! 🎮');
+            
+            // 초기 덱 정보 업데이트
+            updateCardCounts();
+            
+            // 게임 화면으로 전환
+            showScreen(gameplayScreen);
+            
+            // AI 게임에서 AI 턴 처리
+            if (gameMode === 'ai' && !isMyTurn) {
+                scheduleAITurn();
+            }
+        }
+
+        // AI 턴 예약 함수
+        function scheduleAITurn() {
+            if (gameMode !== 'ai' || isMyTurn || !gameStarted) return;
+            
+            // AI 턴을 위한 타임아웃 설정
+            aiTurnTimeout = setTimeout(() => {
+                playAITurn();
+            }, Math.random() * 1500 + 1000); // 1~2.5초 랜덤 딜레이
+        }
+        
+        // AI 턴 실행 함수
+        function playAITurn() {
+            if (!gameStarted || gameMode !== 'ai') return;
+            
+            // AI 카드 내기
+            if (opponentDeck.length > 0) {
+                opponentActiveCard = opponentDeck.shift();
+                renderActiveCard(opponentActiveCard, opponentActiveCardContainer, true);
+                updateCardCounts();
+                
+                // 턴 변경
+                isMyTurn = true;
+                updateTurnIndicator();
+                
+                // 카드가 5개인지 확인하고 일정 확률로 종을 친다
+                if (checkBellCondition()) {
+                    // 70% 확률로 AI가 정확하게 종을 침
+                    if (Math.random() < 0.7) {
+                        setTimeout(() => {
+                            if (!gameStarted) return;
+                            aiRingBell(true);
+                        }, Math.random() * 800 + 500); // 0.5~1.3초 랜덤 딜레이
+                    }
+                } else {
+                    // 10% 확률로 AI가 실수로 종을 침
+                    if (Math.random() < 0.1) {
+                        setTimeout(() => {
+                            if (!gameStarted) return;
+                            aiRingBell(false);
+                        }, Math.random() * 1000 + 1000); // 1~2초 랜덤 딜레이
+                    }
+                }
+            }
+        }
+
+        // AI 종 치기 함수
+        function aiRingBell(isCorrect) {
+            if (!gameStarted || gameMode !== 'ai') return;
+            
+            // 종 애니메이션
+            bell.classList.add('ringing');
+            
+            if (ringTimeout) {
+                clearTimeout(ringTimeout);
+            }
+            
+            ringTimeout = setTimeout(() => {
+                bell.classList.remove('ringing');
+            }, 400);
+            
+            // 종 치기 결과 처리
+            handleBellResult(isCorrect, false);
+        }
+
+        // 게임 종료 함수
+        function gameOver(isWinner) {
+            // 이미 게임이 종료된 상태라면 중복 실행 방지
+            if (!gameStarted) return;
+            
+            gameStarted = false;
+            
+            // AI 턴 타이머 정리
+            if (aiTurnTimeout) {
+                clearTimeout(aiTurnTimeout);
+                aiTurnTimeout = null;
+            }
+            
+            if (gameMode === 'localMulti') {
+                // 로컬 멀티플레이어 게임 종료
+                const winnerText = isWinner ? "🟢 플레이어 1" : "🔵 플레이어 2";
+                showMessage(`🎉 ${winnerText} 승리! 🎉`, 5000);
+            } else {
+                // 온라인/AI 게임 종료
+                if (isWinner) {
+                    showMessage('🎉 게임 승리! 🎉', 5000);
+                } else {
+                    showMessage('😢 게임 패배! 😢', 5000);
+                }
+            }
+            
+            // 3초 후 대기 화면으로 돌아가기
+            setTimeout(() => {
+                // 준비 상태 초기화
+                playerReady = false;
+                opponentReady = false;
+                
+                if (gameMode === 'localMulti') {
+                    // 로컬 멀티플레이어 준비 상태 초기화
+                    myReadyStatus.textContent = '준비 안됨 ❌';
+                    myReadyStatus.className = 'no';
+                    opponentReadyStatus.textContent = '준비 안됨 ❌';
+                    opponentReadyStatus.className = 'no';
+                    readyBtn.textContent = '✅ 모두 준비 완료';
+                } else if (gameMode === 'ai') {
+                    // AI 게임 준비 상태 초기화
+                    myReadyStatus.textContent = '준비 안됨 ❌';
+                    myReadyStatus.className = 'no';
+                    opponentReadyStatus.textContent = '준비 완료 ✅';
+                    opponentReadyStatus.className = 'yes';
+                    readyBtn.textContent = '✅ 준비 완료';
+                } else {
+                    // 온라인 게임 준비 상태 초기화
+                    myReadyStatus.textContent = '준비 안됨 ❌';
+                    myReadyStatus.className = 'no';
+                    opponentReadyStatus.textContent = '준비 안됨 ❌';
+                    opponentReadyStatus.className = 'no';
+                    readyBtn.textContent = '✅ 준비 완료';
+                }
+                
+                // 활성 카드 제거
+                playerActiveCardContainer.innerHTML = '';
+                opponentActiveCardContainer.innerHTML = '';
+                
+                // 대기 화면으로 전환
+                showScreen(waitingScreen);
+                
+                // 온라인 모드에서만 상대방에게 게임 종료 알림
+                if (gameMode === 'online' && conn && conn.open) {
+                    sendGameData('game-over', { isWinner: !isWinner });
+                }
+            }, 5000);
+        }
+
+        // 카드 내기 함수 (플레이어)
+        function playCard(playerNumber = 2) {
+            if (!gameStarted) return;
+            
+            if (gameMode === 'localMulti') {
+                // 로컬 멀티플레이어 모드
+                if (currentPlayer !== playerNumber) return; // 현재 플레이어만 카드 낼 수 있음
+                
+                if (playerNumber === 1) {
+                    // 플레이어 1 (위쪽)
+                    if (opponentDeck.length === 0) return;
+                    
+                    opponentActiveCard = opponentDeck.shift();
+                    renderActiveCard(opponentActiveCard, opponentActiveCardContainer, true);
+                } else {
+                    // 플레이어 2 (아래쪽)
+                    if (playerDeck.length === 0) return;
+                    
+                    playerActiveCard = playerDeck.shift();
+                    renderActiveCard(playerActiveCard, playerActiveCardContainer, false);
+                }
+                
+                // 턴 변경
+                currentPlayer = currentPlayer === 1 ? 2 : 1;
+                updateTurnIndicator();
+            } else {
+                // 온라인/AI 모드
+                if (!isMyTurn || playerDeck.length === 0) return;
+                
+                // 카드 가져오기
+                playerActiveCard = playerDeck.shift();
+                
+                // 카드 표시
+                renderActiveCard(playerActiveCard, playerActiveCardContainer, false);
+                
+                // 온라인 플레이에서만 상대방에게 알림
+                if (gameMode === 'online' && conn && conn.open) {
+                    sendGameData('play-card', { card: playerActiveCard });
+                }
+                
+                // 턴 변경
+                isMyTurn = false;
+                updateTurnIndicator();
+                
+                // AI 게임에서 AI 턴 실행
+                if (gameMode === 'ai') {
+                    scheduleAITurn();
+                }
+            }
+            
+            // 카드 수 업데이트
+            updateCardCounts();
+        }
+
+        // 상대방 카드 처리 함수 (온라인 모드용)
+        function handleOpponentPlayCard(card) {
+            opponentActiveCard = card;
+            
+            // 카드 표시
+            renderActiveCard(opponentActiveCard, opponentActiveCardContainer, true);
+            
+            // 카드 수 업데이트
+            opponentDeck.shift();
+            updateCardCounts();
+            
+            // 턴 변경
+            isMyTurn = true;
+            updateTurnIndicator();
+        }
+
+        // 활성 카드 렌더링 함수
+        function renderActiveCard(card, container, isOpponent) {
+            container.innerHTML = '';
+            
+            if (!card) return;
+            
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            
+            const cardContent = document.createElement('div');
+            cardContent.className = 'card-front';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'card-content';
+            
+            // 카드에 과일 이모지 표시
+            for (let i = 0; i < card.count; i++) {
+                const fruitSpan = document.createElement('span');
+                fruitSpan.className = 'fruit-item';
+                fruitSpan.textContent = card.fruit;
+                contentDiv.appendChild(fruitSpan);
+            }
+            
+            cardContent.appendChild(contentDiv);
+            cardEl.appendChild(cardContent);
+            container.appendChild(cardEl);
+            
+            // 카드 등장 애니메이션
+            setTimeout(() => {
+                cardEl.style.transform = isOpponent ? 
+                    'translateY(20px)' : 'translateY(-20px)';
+            }, 10);
+        }
+
+        // 종 치기 함수
+        function ringBell(playerNumber = 2) {
+            if (!gameStarted) return;
+            
+            // 종 애니메이션
+            bell.classList.add('ringing');
+            
+            if (ringTimeout) {
+                clearTimeout(ringTimeout);
+            }
+            
+            ringTimeout = setTimeout(() => {
+                bell.classList.remove('ringing');
+            }, 400);
+            
+            if (gameMode === 'localMulti') {
+                // 로컬 멀티플레이어 모드에서는 두 플레이어 모두 언제든지 종을 칠 수 있음
+                const isValidRing = checkBellCondition(true);
+                // 종을 친 플레이어가 이긴 것으로 처리
+                handleLocalMultiBellResult(isValidRing, playerNumber);
+            } else {
+                // 온라인/AI 모드
+                const isValidRing = checkBellCondition(true);
+                
+                // 온라인 모드에서만 상대방에게 알림
+                if (gameMode === 'online' && conn && conn.open) {
+                    sendGameData('ring-bell', { isValid: isValidRing });
+                }
+                
+                // 종 치기 결과 처리
+                handleBellResult(isValidRing, true);
+            }
+        }
+
+        // 로컬 멀티플레이어 종 치기 결과 처리 함수
+        function handleLocalMultiBellResult(isValid, playerNumber) {
+            if (isValid) {
+                // 종을 올바르게 친 경우
+                if (playerNumber === 1) {
+                    // 플레이어 1이 종을 친 경우
+                    // 두 플레이어의 활성 카드를 모두 플레이어 1의 덱으로 이동
+                    if (playerActiveCard) {
+                        opponentDeck.push(playerActiveCard);
+                    }
+                    if (opponentActiveCard) {
+                        opponentDeck.push(opponentActiveCard);
+                    }
+                    showMessage('🎯 플레이어 1 성공! 카드를 획득했습니다.', 2000);
+                } else {
+                    // 플레이어 2가 종을 친 경우
+                    // 두 플레이어의 활성 카드를 모두 플레이어 2의 덱으로 이동
+                    if (playerActiveCard) {
+                        playerDeck.push(playerActiveCard);
+                    }
+                    if (opponentActiveCard) {
+                        playerDeck.push(opponentActiveCard);
+                    }
+                    showMessage('🎯 플레이어 2 성공! 카드를 획득했습니다.', 2000);
+                }
+            } else {
+                // 종을 잘못 친 경우 - 상대방에게 카드 2장 주기
+                if (playerNumber === 1) {
+                    // 플레이어 1이 종을 잘못 친 경우
+                    if (opponentDeck.length >= 2) {
+                        const penaltyCards = opponentDeck.splice(0, 2);
+                        playerDeck.push(...penaltyCards);
+                        showMessage('❌ 플레이어 1 오류! 카드 2장을 플레이어 2에게 줬습니다.', 2000);
+                    } else if (opponentDeck.length === 1) {
+                        const penaltyCard = opponentDeck.shift();
+                        playerDeck.push(penaltyCard);
+                        showMessage('❌ 플레이어 1 오류! 카드 1장을 플레이어 2에게 줬습니다.', 2000);
+                    }
+                } else {
+                    // 플레이어 2가 종을 잘못 친 경우
+                    if (playerDeck.length >= 2) {
+                        const penaltyCards = playerDeck.splice(0, 2);
+                        opponentDeck.push(...penaltyCards);
+                        showMessage('❌ 플레이어 2 오류! 카드 2장을 플레이어 1에게 줬습니다.', 2000);
+                    } else if (playerDeck.length === 1) {
+                        const penaltyCard = playerDeck.shift();
+                        opponentDeck.push(penaltyCard);
+                        showMessage('❌ 플레이어 2 오류! 카드 1장을 플레이어 1에게 줬습니다.', 2000);
+                    }
+                }
+            }
+            
+            // 활성 카드 초기화
+            playerActiveCard = null;
+            opponentActiveCard = null;
+            
+            // 활성 카드 화면 초기화
+            playerActiveCardContainer.innerHTML = '';
+            opponentActiveCardContainer.innerHTML = '';
+            
+            // 카드 수 업데이트
+            updateCardCounts();
+            
+            // 턴 재설정 (항상 플레이어 1부터 시작)
+            currentPlayer = 1;
+            updateTurnIndicator();
+        }
+
+        // 상대방 종 치기 처리 함수
+        function handleOpponentRingBell(isValid) {
+            // 종 애니메이션
+            bell.classList.add('ringing');
+            
+            if (ringTimeout) {
+                clearTimeout(ringTimeout);
+            }
+            
+            ringTimeout = setTimeout(() => {
+                bell.classList.remove('ringing');
+            }, 400);
+            
+            // 종 치기 결과 처리
+            handleBellResult(isValid, false);
+        }
+
+        // 종 치기 결과 처리 함수 (온라인/AI 모드용)
+        function handleBellResult(isValid, isPlayer) {
+            if (isValid) {
+                // 종을 올바르게 친 경우
+                if (isPlayer) {
+                    // 플레이어가 종을 친 경우
+                    // 상대방의 활성 카드 가져오기
+                    if (opponentActiveCard) {
+                        playerDeck.push(opponentActiveCard);
+                    }
+                    
+                    // 플레이어의 활성 카드 가져오기
+                    if (playerActiveCard) {
+                        playerDeck.push(playerActiveCard);
+                    }
+                    
+                    showMessage('🎯 성공! 카드를 획득했습니다.', 2000);
+                } else {
+                    // 상대방이 종을 친 경우
+                    // 상대방이 모든 활성 카드 가져감
+                    if (playerActiveCard) {
+                        opponentDeck.push(playerActiveCard);
+                    }
+                    
+                    if (opponentActiveCard) {
+                        opponentDeck.push(opponentActiveCard);
+                    }
+                    
+                    showMessage('👀 상대방이 종을 쳐서 카드를 획득했습니다.', 2000);
+                }
+            } else {
+                // 종을 잘못 친 경우
+                if (isPlayer) {
+                    // 플레이어가 종을 잘못 친 경우
+                    // 패널티: 상대방에게 카드 2장 주기
+                    if (playerDeck.length >= 2) {
+                        const penaltyCards = playerDeck.splice(0, 2);
+                        opponentDeck.push(...penaltyCards);
+                        showMessage('❌ 잘못된 종치기! 카드 2장을 상대방에게 줬습니다.', 2000);
+                    } else if (playerDeck.length === 1) {
+                        const penaltyCard = playerDeck.shift();
+                        opponentDeck.push(penaltyCard);
+                        showMessage('❌ 잘못된 종치기! 마지막 카드를 상대방에게 줬습니다.', 2000);
+                    }
+                } else {
+                    // 상대방이 종을 잘못 친 경우
+                    if (opponentDeck.length >= 2) {
+                        const penaltyCards = opponentDeck.splice(0, 2);
+                        playerDeck.push(...penaltyCards);
+                        showMessage('✅ 상대방이 잘못 종을 쳤습니다! 카드 2장을 받았습니다.', 2000);
+                    } else if (opponentDeck.length === 1) {
+                        const penaltyCard = opponentDeck.shift();
+                        playerDeck.push(penaltyCard);
+                        showMessage('✅ 상대방이 잘못 종을 쳤습니다! 마지막 카드를 받았습니다.', 2000);
+                    }
+                }
+            }
+            
+            // 활성 카드 초기화
+            playerActiveCard = null;
+            opponentActiveCard = null;
+            
+            // 활성 카드 화면 초기화
+            playerActiveCardContainer.innerHTML = '';
+            opponentActiveCardContainer.innerHTML = '';
+            
+            // 카드 수 업데이트
+            updateCardCounts();
+            
+            // 턴 재설정 (호스트 선공)
+            isMyTurn = isHost;
+            updateTurnIndicator();
+            
+            // AI 게임에서 AI 턴 처리
+            if (gameMode === 'ai' && !isMyTurn && gameStarted) {
+                scheduleAITurn();
+            }
+        }
+
+        // 종 칠 수 있는 조건 확인 함수
+        function checkBellCondition(isCheck = false) {
+            // 플레이어와 상대방의 활성 카드가 모두 있어야 함
+            if (!playerActiveCard || !opponentActiveCard) {
+                return false;
+            }
+            
+            // 과일 개수 계산
+            const fruitCounts = {};
+            fruits.forEach(fruit => fruitCounts[fruit] = 0);
+            
+            // 플레이어 카드의 과일 개수 더하기
+            fruitCounts[playerActiveCard.fruit] += playerActiveCard.count;
+            
+            // 상대방 카드의 과일 개수 더하기
+            fruitCounts[opponentActiveCard.fruit] += opponentActiveCard.count;
+            
+            // 정확히 5개인 과일이 있는지 확인
+            for (const fruit in fruitCounts) {
+                if (fruitCounts[fruit] === 5) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        // PeerJS 초기화 함수
+        function initPeerConnection() {
+            console.log("PeerJS 초기화 시작");
+            toggleLoader(true);
+            connectedToPeer = false;
+            gameMode = 'online';
+            
+            // 기존 피어 연결 완전히 정리
+            if (peer) {
+                try {
+                    peer.destroy();
+                    peer = null;
+                    console.log("기존 피어 연결 정리됨");
+                } catch (err) {
+                    console.error("피어 정리 중 오류:", err);
+                }
+            }
+            
+            // 연결 정리를 위한 지연
+            setTimeout(() => {
+                connectionStatus.textContent = '🔄 게임 서버에 연결 중...';
+                
+                try {
+                    // 고유한 ID 생성
+                    const uniqueId = isHost ? 
+                        'jorigalli-host-' + gameCode : 
+                        'jorigalli-guest-' + Date.now().toString(36);
+                    
+                    console.log(`새 피어 ID로 연결 시도: ${uniqueId}`);
+                    
+                    // 안정적인 설정으로 피어 생성
+                    peer = new Peer(uniqueId, {
+                        debug: 1, // 최소한의 디버그 메시지만 보이게
+                        config: {
+                            'iceServers': [
+                                { urls: 'stun:stun.l.google.com:19302' },
+                                { urls: 'stun:stun1.l.google.com:19302' },
+                                { urls: 'stun:stun2.l.google.com:19302' },
+                                { urls: 'stun:stun3.l.google.com:19302' },
+                                { urls: 'stun:stun4.l.google.com:19302' }
+                            ]
+                        }
+                    });
+                    
+                    // 이벤트 리스너 설정
+                    setupPeerEventListeners();
+                    
+                    // 15초 후에도 연결이 안되면 재시도 옵션 제공
+                    setTimeout(() => {
+                        if (!connectedToPeer) {
+                            toggleLoader(false);
+                            connectionStatus.innerHTML = '❌ 서버 연결 실패. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-connection">다시 시도</span>하거나 오프라인 모드를 이용해보세요.';
+                            
+                            document.getElementById('retry-connection').addEventListener('click', () => {
+                                if (isHost) {
+                                    createBtn.click();
+                                } else {
+                                    joinBtn.click();
+                                }
+                            });
+                            
+                            // 로컬 플레이 버튼 강조
+                            localMultiBtn.style.transform = 'scale(1.05)';
+                            setTimeout(() => {
+                                localMultiBtn.style.transform = '';
+                            }, 2000);
+                        }
+                    }, 15000);
+                } catch (error) {
+                    console.error('피어 생성 오류:', error);
+                    toggleLoader(false);
+                    connectionStatus.innerHTML = '❌ 연결 오류. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-connection">다시 시도</span>해주세요.';
+                    
+                    document.getElementById('retry-connection').addEventListener('click', () => {
+                        if (isHost) {
+                            createBtn.click();
+                        } else {
+                            joinBtn.click();
+                        }
+                    });
+                }
+            }, 1000); // 기존 연결 정리를 위한 충분한 지연
+        }
+
+        // 피어 이벤트 리스너 설정 함수
+        function setupPeerEventListeners() {
+            if (!peer) return;
+            
+            // 연결 성공 시
+            peer.on('open', id => {
+                playerId = id;
+                connectedToPeer = true;
+                
+                if (isHost) {
+                    // 호스트는 게임 코드 표시
+                    peerIdDisplay.textContent = gameCode;
+                    peerIdContainer.style.display = 'block';
+                    connectionStatus.textContent = '✅ 연결됨! 게임 코드를 친구에게 공유하세요.';
+                } else {
+                    // 게스트는 연결 시도 메시지
+                    connectionStatus.textContent = '🔄 게임 방 접속 중...';
+                    
+                    // 호스트 ID로 연결 시도
+                    const hostId = 'jorigalli-host-' + gameCode;
+                    
+                    try {
+                        conn = peer.connect(hostId, {
+                            reliable: true
+                        });
+                        
+                        // 연결 핸들러 설정
+                        handlePeerConnection();
+                        
+                        // 10초 후에도 연결이 안되면 오류 표시
+                        setTimeout(() => {
+                            if (!conn || !conn.open) {
+                                toggleLoader(false);
+                                connectionStatus.innerHTML = '❌ 게임 방을 찾을 수 없습니다. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-join">다시 시도</span>해주세요.';
+                                
+                                document.getElementById('retry-join').addEventListener('click', () => {
+                                    joinBtn.click();
+                                });
+                            }
+                        }, 10000);
+                    } catch (error) {
+                        logError('연결 시도 오류:', error);
+                        toggleLoader(false);
+                        connectionStatus.innerHTML = '❌ 연결 실패. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-join">다시 시도</span>해주세요.';
+                        
+                        document.getElementById('retry-join').addEventListener('click', () => {
+                            joinBtn.click();
+                        });
+                    }
+                }
+                
+                toggleLoader(false);
+            });
+            
+            // 연결 에러 시
+            peer.on('error', err => {
+                logError('피어 연결 오류:', err);
+                
+                if (err.type === 'peer-unavailable') {
+                    toggleLoader(false);
+                    connectionStatus.innerHTML = '⚠️ 존재하지 않는 게임 코드입니다. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-join">다시 시도</span>해주세요.';
+                    
+                    if (document.getElementById('retry-join')) {
+                        document.getElementById('retry-join').addEventListener('click', () => {
+                            joinBtn.click();
+                        });
+                    }
+                } else {
+                    toggleLoader(false);
+                    connectionStatus.innerHTML = `❌ 연결 오류: ${err.message || '알 수 없는 오류'}. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-connection">다시 시도</span>해주세요.`;
+                    
+                    if (document.getElementById('retry-connection')) {
+                        document.getElementById('retry-connection').addEventListener('click', () => {
+                            if (isHost) {
+                                createBtn.click();
+                            } else {
+                                joinBtn.click();
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // 연결 요청 수신 시
+            peer.on('connection', connection => {
+                // 이미 연결된 경우 새 연결 거부
+                if (conn && conn.open) {
+                    connection.close();
+                    return;
+                }
+                
+                conn = connection;
+                handlePeerConnection();
+            });
+            
+            // 연결 종료 시
+            peer.on('disconnected', () => {
+                if (!peer) return;
+                
+                connectionStatus.textContent = '⚠️ 서버와 연결이 끊어졌습니다. 재연결을 시도합니다...';
+                connectedToPeer = false;
+                
+                // 피어가 이미 파괴되었는지 확인
+                const isPeerDestroyed = !peer.disconnected; // peer.disconnected가 false면 이미 파괴됨
+                
+                // 5초 후 재연결 시도
+                setTimeout(() => {
+                    if (!connectedToPeer) {
+                        if (!isPeerDestroyed && peer) {
+                            try {
+                                peer.reconnect();
+                            } catch (error) {
+                                logError('재연결 오류:', error);
+                                // 재연결 실패 시 새 피어 생성
+                                initPeerConnection();
+                            }
+                        } else {
+                            // 피어가 이미 파괴된 경우 새로 시작
+                            initPeerConnection();
+                        }
+                    }
+                }, 5000);
+            });
+            
+            // 완전 종료 시
+            peer.on('close', () => {
+                connectedToPeer = false;
+                peer = null;
+                connectionStatus.textContent = '❌ 서버와 연결이 종료되었습니다.';
+                toggleLoader(false);
+            });
+        }
+
+        // 피어 연결 처리 함수
+        function handlePeerConnection() {
+            if (!conn) return;
+            
+            // 연결 성공 시
+            conn.on('open', () => {
+                connectionStatus.textContent = '✅ 상대방과 연결되었습니다!';
+                toggleLoader(false);
+                
+                // 대기 화면으로 전환
+                showScreen(waitingScreen);
+                
+                // 대기 화면 텍스트 재설정
+                document.querySelector('.waiting-screen h2').textContent = '🎲 게임 준비 🎲';
+                document.querySelector('.ready-status p:nth-child(1)').innerHTML = 
+                    '나: <span id="my-ready" class="no">준비 안됨 ❌</span>';
+                document.querySelector('.ready-status p:nth-child(2)').innerHTML = 
+                    '상대방: <span id="opponent-ready" class="no">준비 안됨 ❌</span>';
+                
+                myReadyStatus = document.getElementById('my-ready');
+                opponentReadyStatus = document.getElementById('opponent-ready');
+                
+                // 조작법 업데이트
+                updateControlsForGameMode();
+            });
+            
+            // 데이터 수신 시
+            conn.on('data', data => {
+                try {
+                    handleGameData(data);
+                } catch (error) {
+                    logError('데이터 처리 오류:', error);
+                }
+            });
+            
+            // 연결 종료 시
+            conn.on('close', () => {
+                connectionStatus.textContent = '❌ 상대방과의 연결이 종료되었습니다.';
+                
+                // 게임 중이었다면 메시지 표시
+                if (gameStarted) {
+                    showMessage('⚠️ 상대방과의 연결이 끊어졌습니다!', 3000);
+                }
+                
+                // 접속 화면으로 돌아가기
+                setTimeout(() => {
+                    showScreen(connectionScreen);
+                    
+                    // 게임 초기화
+                    resetGame();
+                }, 3000);
+            });
+            
+            // 연결 에러 시
+            conn.on('error', err => {
+                logError('연결 오류:', err);
+                connectionStatus.innerHTML = `❌ 연결 오류: ${err.message || '알 수 없는 오류'}. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-connection">다시 시도</span>해주세요.`;
+                
+                document.getElementById('retry-connection').addEventListener('click', () => {
+                    if (isHost) {
+                        createBtn.click();
+                    } else {
+                        joinBtn.click();
+                    }
+                });
+                
+                toggleLoader(false);
+            });
+        }
+
+        // 데이터 전송 함수 (온라인 모드용)
+        function sendGameData(type, data) {
+            if (!conn || !conn.open || gameMode !== 'online') return;
+            
+            try {
+                conn.send({
+                    type,
+                    data
+                });
+            } catch (error) {
+                logError('데이터 전송 오류:', error);
+                
+                // 연결이 끊어진 경우
+                if (error.toString().includes('socket is closed')) {
+                    handleConnectionLost();
+                }
+            }
+        }
+        
+        // 연결 끊김 처리 함수
+        function handleConnectionLost() {
+            if (gameMode === 'online') {
+                showMessage('⚠️ 상대방과의 연결이 끊어졌습니다.', 3000);
+                
+                // 5초 후 메인 화면으로
+                setTimeout(() => {
+                    resetGame();
+                    showScreen(connectionScreen);
+                    connectionStatus.textContent = '❌ 연결이 끊어졌습니다. 다시 시도해주세요.';
+                }, 5000);
+            }
+        }
+
+        // 채팅 메시지 전송 함수
+        function sendChatMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            if (gameMode === 'ai') {
+                // AI 게임에서는 AI 응답
+                addChatMessage(message, true);
+                chatInput.value = '';
+                
+                // AI 응답 (약간의 지연 후)
+                setTimeout(() => {
+                    const aiResponses = [
+                        "재미있게 플레이하고 있나요? 😊",
+                        "좋은 게임이네요! 🎮",
+                        "행운을 빕니다! 🍀",
+                        "오늘 컨디션이 좋아요! 👍",
+                        "종 치기 준비 완료! 🔔",
+                        "과일 5개 눈여겨보고 있어요! 🍓",
+                        "좋은 카드가 나오길! 🃏",
+                        "재미있게 놀아요! 😄",
+                        "좋은 경기예요! ⭐",
+                        "화이팅! 💪"
+                    ];
+                    
+                    const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)];
+                    addChatMessage(randomResponse, false);
+                }, 1000 + Math.random() * 1000);
+            } else if (gameMode === 'localMulti') {
+                // 로컬 멀티플레이어에서는 플레이어 메시지 표시
+                const playerName = currentPlayer === 1 ? "🟢 플레이어 1" : "🔵 플레이어 2";
+                addChatMessage(`${playerName}: ${message}`, true);
+                chatInput.value = '';
+            } else if (gameMode === 'online' && conn && conn.open) {
+                // 온라인 플레이에서 메시지 전송
+                addChatMessage(message, true);
+                sendGameData('chat', { message });
+                chatInput.value = '';
+            } else {
+                showMessage('⚠️ 채팅을 보낼 수 없습니다. 연결을 확인하세요.', 2000);
+            }
+        }
+
+        // 채팅 메시지 추가 함수
+        function addChatMessage(message, isSent) {
+            const messageEl = document.createElement('div');
+            messageEl.className = `chat-message ${isSent ? 'sent' : 'received'}`;
+            messageEl.textContent = message;
+            
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 게임 데이터 처리 함수 (온라인 모드용)
+        function handleGameData(data) {
+            if (!data || !data.type) return;
+            
+            const { type, data: gameData } = data;
+            console.log(`데이터 수신: ${type}`, gameData);
+            
+            switch (type) {
+                case 'ready':
+                    // 상대방 준비 상태 업데이트
+                    opponentReady = gameData.ready;
+                    opponentReadyStatus.textContent = opponentReady ? '준비 완료 ✅' : '준비 안됨 ❌';
+                    opponentReadyStatus.className = opponentReady ? 'yes' : 'no';
+                    
+                    // 양쪽 모두 준비 완료일 경우 카운트다운 시작
+                    if (playerReady && opponentReady) {
+                        if (isHost) {
+                            startCountdown();
+                        }
+                    }
+                    break;
+                
+                case 'init-decks':
+                    // 덱 초기화 (게스트 플레이어가 호스트로부터 덱 정보 받음)
+                    if (gameData.playerDeck && gameData.playerDeck.length > 0) {
+                        playerDeck = gameData.playerDeck;
+                        console.log(`상대방으로부터 내 덱 수신: ${playerDeck.length}장`);
+                    } else {
+                        console.error("받은 playerDeck이 비어있거나 유효하지 않습니다");
+                    }
+                    
+                    if (gameData.opponentDeck && gameData.opponentDeck.length > 0) {
+                        opponentDeck = gameData.opponentDeck;
+                        console.log(`상대방으로부터 상대 덱 수신: ${opponentDeck.length}장`);
+                    } else {
+                        console.error("받은 opponentDeck이 비어있거나 유효하지 않습니다");
+                    }
+                    
+                    // 덱이 비어있으면 로컬에서 생성
+                    if (playerDeck.length === 0 || opponentDeck.length === 0) {
+                        console.warn("받은 덱이 비어있어 로컬에서 새로 생성합니다");
+                        createDecks();
+                    }
+                    
+                    updateCardCounts();
+                    break;
+                
+                case 'countdown':
+                    // 카운트다운 표시
+                    if (typeof gameData.count === 'number') {
+                        showCountdown(gameData.count);
+                        
+                        // 0일 때 게임 시작
+                        if (gameData.count === 0) {
+                            startGame();
+                        }
+                    }
+                    break;
+                
+                case 'play-card':
+                    // 상대방 카드 처리
+                    if (gameData.card) {
+                        handleOpponentPlayCard(gameData.card);
+                    }
+                    break;
+                
+                case 'ring-bell':
+                    // 상대방 종 치기 처리
+                    if (typeof gameData.isValid === 'boolean') {
+                        handleOpponentRingBell(gameData.isValid);
+                    }
+                    break;
+                
+                case 'chat':
+                    // 채팅 메시지 표시
+                    if (gameData.message) {
+                        addChatMessage(gameData.message, false);
+                    }
+                    break;
+                
+                case 'game-over':
+                    // 게임 종료 처리
+                    gameStarted = false;
+                    
+                    if (gameData.isWinner) {
+                        showMessage('🎉 게임 승리! 🎉', 5000);
+                    } else {
+                        showMessage('😢 게임 패배! 😢', 5000);
+                    }
+                    
+                    // 3초 후 대기 화면으로 돌아가기
+                    setTimeout(() => {
+                        // 준비 상태 초기화
+                        playerReady = false;
+                        opponentReady = false;
+                        myReadyStatus.textContent = '준비 안됨 ❌';
+                        myReadyStatus.className = 'no';
+                        opponentReadyStatus.textContent = '준비 안됨 ❌';
+                        opponentReadyStatus.className = 'no';
+                        readyBtn.textContent = '✅ 준비 완료';
+                        
+                        // 활성 카드 제거
+                        playerActiveCardContainer.innerHTML = '';
+                        opponentActiveCardContainer.innerHTML = '';
+                        
+                        // 대기 화면으로 전환
+                        showScreen(waitingScreen);
+                    }, 5000);
+                    break;
+                
+                default:
+                    console.warn('알 수 없는 데이터 타입:', type);
+            }
+        }
+
+        // 게임 리셋 함수
+        function resetGame() {
+            playerDeck = [];
+            opponentDeck = [];
+            playerActiveCard = null;
+            opponentActiveCard = null;
+            playerReady = false;
+            opponentReady = false;
+            gameStarted = false;
+            isMyTurn = false;
+            currentPlayer = 1;
+            
+            // AI 턴 타이머 정리
+            if (aiTurnTimeout) {
+                clearTimeout(aiTurnTimeout);
+                aiTurnTimeout = null;
+            }
+            
+            // 카운트다운 정리
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            // UI 초기화
+            playerActiveCardContainer.innerHTML = '';
+            opponentActiveCardContainer.innerHTML = '';
+            
+            if (myReadyStatus) {
+                myReadyStatus.textContent = '준비 안됨 ❌';
+                myReadyStatus.className = 'no';
+            }
+            
+            if (opponentReadyStatus) {
+                opponentReadyStatus.textContent = '준비 안됨 ❌';
+                opponentReadyStatus.className = 'no';
+            }
+            
+            if (readyBtn) {
+                readyBtn.textContent = '✅ 준비 완료';
+            }
+        }
+
+        // 이벤트 리스너 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            // 새 게임 만들기 버튼
+            createBtn.addEventListener('click', () => {
+                isHost = true;
+                gameMode = 'online';
+                
+                // 3자리 게임 코드 생성
+                gameCode = generateGameCode();
+                
+                toggleLoader(true);
+                connectionStatus.textContent = '🔄 게임 방 생성 중...';
+                
+                // PeerJS 연결 초기화
+                initPeerConnection();
+            });
+            
+            // 게임 참여 버튼
+            joinBtn.addEventListener('click', () => {
+                const code = joinId.value.trim();
+                if (!code || code.length !== 3 || !/^\d+$/.test(code)) {
+                    connectionStatus.textContent = '⚠️ 유효한 3자리 게임 코드를 입력해주세요.';
+                    joinId.focus();
+                    return;
+                }
+                
+                isHost = false;
+                gameMode = 'online';
+                gameCode = code;
+                
+                toggleLoader(true);
+                connectionStatus.textContent = '🔄 게임 방 접속 중...';
+                
+                // PeerJS 연결 초기화
+                initPeerConnection();
+                
+                // 피어 연결 성공 후 호스트에 연결 시도
+                const connectionHandler = () => {
+                    console.log("피어 open 핸들러 실행");
+                    
+                    if (!peer || !peer.id) {
+                        console.error("피어가 유효하지 않음");
+                        return;
+                    }
+                    
+                    // 호스트 ID로 연결 시도
+                    const hostId = 'jorigalli-host-' + gameCode;
+                    console.log(`호스트 ID에 연결 시도: ${hostId}`);
+                    
+                    try {
+                        conn = peer.connect(hostId, {
+                            reliable: true,
+                            metadata: { gameCode }
+                        });
+                        
+                        if (!conn) {
+                            console.error("연결 객체 생성 실패");
+                            return;
+                        }
+                        
+                        // 연결 핸들러 설정
+                        handlePeerConnection();
+                        
+                        // 10초 후에도 연결이 안되면 오류 표시
+                        setTimeout(() => {
+                            if (!conn || !conn.open) {
+                                console.warn("연결 시간 초과");
+                                toggleLoader(false);
+                                connectionStatus.innerHTML = '⚠️ 게임 방을 찾을 수 없습니다. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-join">다시 시도</span>해주세요.';
+                                
+                                const retryBtn = document.getElementById('retry-join');
+                                if (retryBtn) {
+                                    retryBtn.addEventListener('click', () => {
+                                        joinBtn.click();
+                                    });
+                                }
+                            }
+                        }, 10000);
+                    } catch (error) {
+                        console.error('연결 시도 오류:', error);
+                        toggleLoader(false);
+                        connectionStatus.innerHTML = '❌ 연결 실패. <span style="text-decoration: underline; cursor: pointer; color: #FF6B6B;" id="retry-join">다시 시도</span>해주세요.';
+                        
+                        const retryBtn = document.getElementById('retry-join');
+                        if (retryBtn) {
+                            retryBtn.addEventListener('click', () => {
+                                joinBtn.click();
+                            });
+                        }
+                    }
+                };
+                
+                // 이벤트 핸들러 등록 (연결이 성공하면 호출됨)
+                if (peer) {
+                    peer.on('open', connectionHandler);
+                }
+            });
+            
+            // AI 게임 버튼
+            localPlayBtn.addEventListener('click', () => {
+                startAIGame();
+                
+                // 즉시 덱 생성
+                createDecks();
+                console.log(`AI 게임: 초기 카드 수 - 플레이어: ${playerDeck.length}, AI: ${opponentDeck.length}`);
+            });
+            
+            // 로컬 멀티플레이어 버튼
+            localMultiBtn.addEventListener('click', () => {
+                startLocalMultiGame();
+                
+                // 즉시 덱 생성
+                createDecks();
+                console.log(`로컬 멀티: 초기 카드 수 - 플레이어1: ${opponentDeck.length}, 플레이어2: ${playerDeck.length}`);
+            });
+            
+            // 준비 버튼
+            readyBtn.addEventListener('click', () => {
+                if (gameMode === 'localMulti') {
+                    // 로컬 멀티플레이어에서는 두 플레이어 모두 준비완료로 설정
+                    playerReady = true;
+                    opponentReady = true;
+                    myReadyStatus.textContent = '준비 완료 ✅';
+                    myReadyStatus.className = 'yes';
+                    opponentReadyStatus.textContent = '준비 완료 ✅';
+                    opponentReadyStatus.className = 'yes';
+                    
+                    // 바로 카운트다운 시작
+                    startCountdown();
+                } else {
+                    // 온라인/AI 게임에서는 자신의 준비 상태만 토글
+                    playerReady = !playerReady;
+                    myReadyStatus.textContent = playerReady ? '준비 완료 ✅' : '준비 안됨 ❌';
+                    myReadyStatus.className = playerReady ? 'yes' : 'no';
+                    readyBtn.textContent = playerReady ? '🔄 준비 취소' : '✅ 준비 완료';
+                    
+                    // 온라인 모드에서만 상대방에게 전송
+                    if (gameMode === 'online' && conn && conn.open) {
+                        sendGameData('ready', { ready: playerReady });
+                    }
+                    
+                    // AI 게임에서는 플레이어가 준비되면 바로 게임 시작
+                    if (gameMode === 'ai' && playerReady) {
+                        startCountdown();
+                    }
+                    
+                    // 온라인 모드에서 양쪽 모두 준비 완료일 경우 카운트다운 시작
+                    if (gameMode === 'online' && playerReady && opponentReady && isHost) {
+                        startCountdown();
+                    }
+                }
+            });
+            
+            // 뒤로가기 버튼
+            backBtn.addEventListener('click', () => {
+                // 게임 초기화
+                resetGame();
+                
+                // 연결 종료
+                if (conn) {
+                    try {
+                        conn.close();
+                    } catch (error) {
+                        // 무시
+                    }
+                    conn = null;
+                }
+                
+                if (peer) {
+                    try {
+                        peer.destroy();
+                    } catch (error) {
+                        // 무시
+                    }
+                    peer = null;
+                }
+                
+                // 메인 화면으로 돌아가기
+                showScreen(connectionScreen);
+            });
+            
+            // 키보드 이벤트
+            document.addEventListener('keydown', (e) => {
+                if (!gameStarted) return;
+                
+                if (gameMode === 'localMulti') {
+                    // 로컬 멀티플레이어 키 처리
+                    if (e.key === 'w' || e.key === 'W') {
+                        // 플레이어 1 카드 내기
+                        playCard(1);
+                    } else if (e.key === 'ArrowUp') {
+                        // 플레이어 2 카드 내기
+                        playCard(2);
+                    } else if (e.key === ' ' || e.code === 'Space') {
+                        // 플레이어 1 종 치기
+                        e.preventDefault();
+                        ringBell(1);
+                    } else if (e.key === 'Enter') {
+                        // 플레이어 2 종 치기
+                        e.preventDefault();
+                        ringBell(2);
+                    }
+                } else {
+                    // 온라인/AI 게임 키 처리
+                    if (e.key === 'ArrowUp') {
+                        // 카드 내기
+                        playCard();
+                    } else if (e.key === ' ' || e.code === 'Space') {
+                        // 종 치기
+                        e.preventDefault();
+                        ringBell();
+                    }
+                }
+            });
+            
+            // 종 클릭 이벤트
+            bell.addEventListener('click', () => {
+                if (!gameStarted) return;
+                
+                if (gameMode === 'localMulti') {
+                    // 로컬 멀티플레이어에서는 현재 플레이어가 종 치기
+                    ringBell(currentPlayer);
+                } else {
+                    // 온라인/AI 게임에서는 플레이어가 종 치기
+                    ringBell();
+                }
+            });
+            
+            // 채팅 토글 버튼
+            chatToggle.addEventListener('click', () => {
+                chatContainer.classList.toggle('open');
+                // 채팅창 열릴 때 인풋에 포커스
+                if (chatContainer.classList.contains('open')) {
+                    chatInput.focus();
+                }
+            });
+            
+            // 채팅 전송 버튼
+            sendChatBtn.addEventListener('click', sendChatMessage);
+            
+            // 채팅 입력 필드 엔터 키
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
+                }
+            });
+            
+            // 페이지 언로드 시 연결 정리
+            window.addEventListener('beforeunload', () => {
+                if (conn) {
+                    try {
+                        conn.close();
+                    } catch (e) {}
+                    conn = null;
+                }
+                
+                if (peer) {
+                    try {
+                        peer.destroy();
+                    } catch (e) {}
+                    peer = null;
+                }
+                
+                // 타이머 정리
+                if (aiTurnTimeout) {
+                    clearTimeout(aiTurnTimeout);
+                }
+                
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                }
+            });
+            
+            // 게임 코드 입력 필드 숫자만 입력 가능하도록
+            joinId.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '').substring(0, 3);
+            });
+        });
+    </script>
+</body>
+</html>
